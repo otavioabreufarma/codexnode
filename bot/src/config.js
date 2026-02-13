@@ -1,3 +1,7 @@
+const fs = require('node:fs');
+const path = require('node:path');
+const dotenv = require('dotenv');
+
 const requiredEnv = [
   'DISCORD_TOKEN',
   'GUILD_ID',
@@ -8,7 +12,35 @@ const requiredEnv = [
   'BOT_API_KEY'
 ];
 
+const envCandidatePaths = [
+  path.resolve(process.cwd(), '.env'),
+  path.resolve(__dirname, '../.env'),
+  path.resolve(__dirname, '../../.env')
+];
+
+function hydrateEnvFromKnownPaths() {
+  const hasMissing = requiredEnv.some((key) => !process.env[key]);
+  if (!hasMissing) {
+    return;
+  }
+
+  for (const envPath of envCandidatePaths) {
+    if (!fs.existsSync(envPath)) {
+      continue;
+    }
+
+    dotenv.config({ path: envPath, override: false });
+
+    const stillMissing = requiredEnv.some((key) => !process.env[key]);
+    if (!stillMissing) {
+      return;
+    }
+  }
+}
+
 function assertConfig() {
+  hydrateEnvFromKnownPaths();
+
   const missing = requiredEnv.filter((key) => !process.env[key]);
   if (missing.length > 0) {
     throw new Error(`Variáveis obrigatórias ausentes: ${missing.join(', ')}`);
