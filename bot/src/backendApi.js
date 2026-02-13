@@ -12,6 +12,11 @@ function createBackendApi(config) {
   });
 
   return {
+    async sendInteraction(payload) {
+      const response = await http.post('/bot/interactions', payload);
+      return response.data;
+    },
+
     async requestSteamLink(discordId, serverId) {
       const response = await http.post('/auth/steam/link', { discordId, serverId });
       return response.data;
