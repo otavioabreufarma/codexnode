@@ -186,6 +186,11 @@ app.get('/auth/steam/callback', (req, res) => {
       serverId: session.serverId
     });
 
+    enqueueEvent('STEAM_LINKED', {
+      discordId: session.discordId,
+      serverId: session.serverId
+    });
+
     return res.send('Steam vinculada com sucesso. Você já pode voltar ao Discord.');
   });
 });
