@@ -13,7 +13,7 @@ app.use(express.json());
 const PORT = Number(process.env.PORT || 8080);
 const HOST = '0.0.0.0';
 const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
-const BOT_API_KEY = process.env.BOT_API_KEY || '';
+const BOT_API_KEY = (process.env.BOT_API_KEY || '').trim();
 const PLUGIN_API_TOKEN = process.env.PLUGIN_API_TOKEN || BOT_API_KEY;
 const WEBHOOK_SECRET = process.env.INFINITEPAY_WEBHOOK_SECRET || '';
 const VIP_PRICE = Number(process.env.VIP_PRICE || 29.9);
@@ -104,8 +104,14 @@ function upsertPlayer(serverId, data) {
 }
 
 function protectWithApiKey(req, res, next) {
-  const apiKey = req.headers['x-api-key'];
-  if (!BOT_API_KEY || apiKey !== BOT_API_KEY) {
+  const apiKeyHeader = req.headers['x-api-key'];
+  const authorizationHeader = req.headers.authorization || '';
+  const bearerToken = authorizationHeader.startsWith('Bearer ')
+    ? authorizationHeader.slice('Bearer '.length)
+    : '';
+  const apiKey = String(apiKeyHeader || bearerToken || '').trim();
+
+  if (!BOT_API_KEY || apiKey !== BOT_API_KEY.trim()) {
     return res.status(401).json({ error: 'API key inválida.' });
   }
   next();
@@ -123,8 +129,9 @@ app.get('/health', (_, res) => {
   res.json({ status: 'ok', host: HOST, port: PORT });
 });
 
-app.post('/auth/steam/link', (req, res) => {
-  const { discordId, serverId } = req.body;
+function handleSteamLinkRequest(req, res) {
+  const payload = req.method === 'GET' ? req.query : req.body;
+  const { discordId, serverId } = payload;
   if (!discordId || !serverId || !ensureServer(serverId)) {
     return res.status(400).json({ error: 'discordId e serverId válidos são obrigatórios.' });
   }
@@ -149,7 +156,10 @@ app.post('/auth/steam/link', (req, res) => {
     }
     return res.json({ steamAuthUrl: authUrl });
   });
-});
+}
+
+app.post('/auth/steam/link', handleSteamLinkRequest);
+app.get('/auth/steam/link', handleSteamLinkRequest);
 
 app.get('/auth/steam/callback', (req, res) => {
   const { sessionId } = req.query;
@@ -195,8 +205,9 @@ app.get('/auth/steam/callback', (req, res) => {
   });
 });
 
-app.post('/payments/checkout', async (req, res) => {
-  const { discordId, serverId, vipType, redirectUrl } = req.body;
+async function handleCheckoutRequest(req, res) {
+  const requestData = req.method === 'GET' ? req.query : req.body;
+  const { discordId, serverId, vipType, redirectUrl } = requestData;
   if (!discordId || !serverId || !ensureServer(serverId)) {
     return res.status(400).json({ error: 'discordId e serverId válidos são obrigatórios.' });
   }
@@ -208,7 +219,7 @@ app.post('/payments/checkout', async (req, res) => {
   const amount = vipType === 'vip' ? VIP_PRICE : VIP_PLUS_PRICE;
   const orderNsu = `ORD-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
 
-  const payload = {
+  const checkoutPayload = {
     amount,
     description: `Rust ${serverId.toUpperCase()} - ${vipType.toUpperCase()}`,
     order_nsu: orderNsu,
@@ -224,7 +235,7 @@ app.post('/payments/checkout', async (req, res) => {
   try {
     const response = await axios.post(
       'https://api.infinitepay.io/invoices/public/checkout/links',
-      payload,
+      checkoutPayload,
       {
         headers: {
           Authorization: `Bearer ${process.env.INFINITEPAY_HANDLE}`,
@@ -260,7 +271,10 @@ app.post('/payments/checkout', async (req, res) => {
       details: error.response?.data || error.message
     });
   }
-});
+}
+
+app.post('/payments/checkout', handleCheckoutRequest);
+app.get('/payments/checkout', handleCheckoutRequest);
 
 app.post('/webhooks/infinitepay', (req, res) => {
   const token = req.headers['x-webhook-secret'];
@@ -325,6 +339,10 @@ app.get('/bot/events', protectWithApiKey, (req, res) => {
   const events = readJson(EVENTS_FILE, []);
   const pending = events.filter((e) => !e.processed);
   res.json({ events: pending });
+});
+
+app.get('/bot/ping', protectWithApiKey, (_, res) => {
+  res.json({ ok: true, ts: new Date().toISOString() });
 });
 
 app.post('/bot/events/:eventId/ack', protectWithApiKey, (req, res) => {
