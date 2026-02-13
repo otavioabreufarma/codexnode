@@ -129,6 +129,28 @@ app.get('/health', (_, res) => {
   res.json({ status: 'ok', host: HOST, port: PORT });
 });
 
+
+function isNonEmptyString(value) {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function validateInteractionPayload(payload = {}) {
+  const { discordId, serverId, type, command } = payload;
+
+  const missing = [];
+  if (!isNonEmptyString(discordId)) missing.push('discordId');
+  if (!isNonEmptyString(serverId)) missing.push('serverId');
+  if (!isNonEmptyString(type)) missing.push('type');
+  if (!isNonEmptyString(command)) missing.push('command');
+
+  return {
+    discordId,
+    serverId,
+    type,
+    command,
+    missing
+  };
+}
 function handleSteamLinkRequest(req, res) {
   const payload = req.method === 'GET' ? req.query : req.body;
   const { discordId, serverId } = payload;
@@ -333,6 +355,29 @@ app.post('/webhooks/infinitepay', (req, res) => {
 
   writeJson(ordersFile, orders);
   return res.json({ ok: true });
+});
+
+app.post('/bot/interactions', protectWithApiKey, (req, res) => {
+  const { discordId, serverId, type, command, missing } = validateInteractionPayload(req.body);
+
+  if (missing.includes('discordId') || missing.includes('serverId')) {
+    return res.status(400).json({ error: 'discordId e serverId válidos são obrigatórios.' });
+  }
+
+  if (missing.length) {
+    return res.status(400).json({ error: `Campos obrigatórios ausentes: ${missing.join(', ')}` });
+  }
+
+  return res.json({
+    ok: true,
+    interaction: {
+      discordId,
+      serverId,
+      type,
+      command,
+      receivedAt: new Date().toISOString()
+    }
+  });
 });
 
 app.get('/bot/events', protectWithApiKey, (req, res) => {

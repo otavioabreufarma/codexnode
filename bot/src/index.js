@@ -91,6 +91,43 @@ client.on('messageDelete', async (message) => {
 
 client.on('interactionCreate', async (interaction) => {
   try {
+    const discordId = interaction?.user?.id;
+    const serverId = interaction.guildId;
+    const type = interaction.isButton()
+      ? 'button'
+      : interaction.isStringSelectMenu()
+        ? 'select_menu'
+        : interaction.isChatInputCommand()
+          ? 'slash_command'
+          : 'other';
+    const command = interaction.commandName || interaction.customId || 'unknown';
+
+    if (!serverId) {
+      console.warn(`interactionCreate ignorado sem guildId (DM): user=${discordId || 'unknown'} type=${type}`);
+      return;
+    }
+
+    const interactionPayload = {
+      discordId,
+      serverId,
+      type,
+      command
+    };
+
+    const missingFields = Object.entries(interactionPayload)
+      .filter(([, value]) => typeof value !== 'string' || !value.trim())
+      .map(([field]) => field);
+
+    if (missingFields.length) {
+      console.error(
+        `Payload de interactionCreate inválido. Campos ausentes/vazios: ${missingFields.join(', ')}`,
+        interactionPayload
+      );
+      return;
+    }
+
+    await backendApi.sendInteraction(interactionPayload);
+
     if (interaction.isStringSelectMenu() && interaction.customId === 'server_select') {
       const selected = interaction.values[0];
       if (!VALID_SERVER_IDS.has(selected)) {
