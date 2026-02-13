@@ -50,6 +50,12 @@ function assertConfig() {
 function getConfig() {
   assertConfig();
 
+  const normalizedApiKey = process.env.BOT_API_KEY
+    .trim()
+    .replace(/^['\"]|['\"]$/g, '')
+    .replace(/^Bearer\s+/i, '')
+    .trim();
+
   return {
     discordToken: process.env.DISCORD_TOKEN,
     guildId: process.env.GUILD_ID,
@@ -57,7 +63,7 @@ function getConfig() {
     vipRoleId: process.env.VIP_ROLE_ID,
     vipPlusRoleId: process.env.VIP_PLUS_ROLE_ID,
     backendUrl: process.env.BACKEND_URL.replace(/\/$/, ''),
-    botApiKey: process.env.BOT_API_KEY.trim(),
+    botApiKey: normalizedApiKey,
     pollingIntervalMs: Number(process.env.POLLING_INTERVAL_MS || 15000)
   };
 }

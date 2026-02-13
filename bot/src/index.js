@@ -17,6 +17,14 @@ const client = new Client({
 async function handleButton(interaction) {
   const serverId = storage.getSelectedServer(interaction.user.id);
 
+  if (!serverId) {
+    await interaction.reply({
+      content: 'Selecione um servidor no menu antes de continuar.',
+      flags: MessageFlags.Ephemeral
+    });
+    return;
+  }
+
   if (interaction.customId === 'link_steam') {
     const response = await backendApi.requestSteamLink(interaction.user.id, serverId);
     await sendDmSafe(interaction.client, interaction.user.id, `🔗 Vincule sua Steam aqui: ${response.steamAuthUrl}`);
