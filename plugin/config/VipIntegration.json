@@ -1,0 +1,6 @@
+{
+  "ServerId": "server1",
+  "BackendUrl": "https://seu-backend.discloud.app",
+  "ApiToken": "",
+  "CheckInterval": 30.0
+}
