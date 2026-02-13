@@ -1,11 +1,13 @@
 const axios = require('axios');
 
 function createBackendApi(config) {
+  const apiKey = config.botApiKey.trim();
   const http = axios.create({
     baseURL: config.backendUrl,
     timeout: 10000,
     headers: {
-      'x-api-key': config.botApiKey
+      'x-api-key': apiKey,
+      Authorization: `Bearer ${apiKey}`
     }
   });
 
@@ -27,6 +29,11 @@ function createBackendApi(config) {
 
     async ackEvent(eventId) {
       await http.post(`/bot/events/${eventId}/ack`);
+    },
+
+    async ping() {
+      const response = await http.get('/bot/ping');
+      return response.data;
     }
   };
 }
