@@ -29,7 +29,7 @@ function setEmbedState(state) {
 
 function getSelectedServer(userId) {
   const map = readJson(selectionFile, {});
-  return map[userId] || 'server1';
+  return map[userId] || null;
 }
 
 function setSelectedServer(userId, serverId) {
